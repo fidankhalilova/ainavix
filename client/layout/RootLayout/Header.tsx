@@ -83,7 +83,7 @@ export default function Navbar() {
               width={36}
               height={36}
               priority
-              className="object-contain h-[40px]"
+              className="object-contain "
             />
           </div>
           <span
