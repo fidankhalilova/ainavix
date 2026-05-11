@@ -10,7 +10,7 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 
 // Static import for the logo (Best practice in Next.js)
-import AinavixLogo from "@/assets/ainavix_logo.png";
+import Logo from "@/assets/ogo.png";
 
 const NAV = [
   { href: "/", label: "Home" },
@@ -78,12 +78,12 @@ export default function Navbar() {
         <Link href="/" className="flex items-center gap-2.5 group">
           <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-md group-hover:scale-105 transition-all duration-300 overflow-hidden">
             <Image
-              src={AinavixLogo} // ← Fixed: Static import
+              src={Logo} // ← Fixed: Static import
               alt="AINavix Logo"
               width={36}
               height={36}
               priority
-              className="object-contain"
+              className="object-contain h-[40px]"
             />
           </div>
           <span

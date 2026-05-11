@@ -3,7 +3,7 @@ import { Camera, Bird, Phone, Mail } from "lucide-react";
 import Image from "next/image";
 
 // Static import for the logo (recommended way)
-import AinavixLogo from "@/assets/ainavix_logo.png";
+import Logo from "@/assets/ogo.png";
 
 const LINKS = {
   Platform: [
@@ -59,7 +59,7 @@ export default function Footer() {
             <div className="flex items-center gap-2.5 mb-5">
               <div className="w-9 h-9 rounded-xl bg-linear-to-br from-[#4A6DE0] to-[#00C2CB] flex items-center justify-center shadow-[0_0_28px_rgba(0,194,203,.4)] overflow-hidden">
                 <Image
-                  src={AinavixLogo} // ← Fixed: Static import
+                  src={Logo} // ← Fixed: Static import
                   alt="AINavix Logo"
                   width={36}
                   height={36}
