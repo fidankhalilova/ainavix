@@ -1,43 +1,42 @@
-// services/usersService.ts
-// All raw API calls for the User resource
+import { User } from '@/types';
+import { usersStore } from '@/db/store';
 
-import apiClient from "@/lib/apiClient";
-import { User } from "@/types";
-
-export async function fetchUserByUsername(
-  username: string,
-): Promise<User | null> {
-  try {
-    const res = await apiClient.get<User[]>(
-      `/users?filters[username][$eq]=${encodeURIComponent(username)}&populate=avatar`,
-    );
-    return res.data?.[0] ?? null;
-  } catch {
-    return null;
-  }
+function toUser(u: ReturnType<typeof usersStore.toSafe>): User {
+  return { ...u, id: u._id } as User;
 }
 
-export async function fetchUserById(id: number): Promise<User> {
-  const res = await apiClient.get<User>(`/users/${id}?populate=avatar`);
-  return res.data;
-}
+export const usersService = {
+  getById: (id: string): Promise<User> => {
+    const u = usersStore.findById(id);
+    if (!u) return Promise.reject(new Error('User not found'));
+    return Promise.resolve(toUser(usersStore.toSafe(u)));
+  },
 
-export async function updateProfile(
-  userId: number,
-  data: { bio?: string; username?: string },
-): Promise<User> {
-  const res = await apiClient.put<User>(`/users/${userId}`, data);
-  return res.data;
-}
+  updateProfile: (userId: string, data: { bio?: string; username?: string }): Promise<User> => {
+    // Check username uniqueness
+    if (data.username) {
+      const taken = usersStore.findByUsername(data.username);
+      if (taken && taken._id !== userId) {
+        return Promise.reject(new Error('Username already taken'));
+      }
+    }
+    const updated = usersStore.update(userId, data);
+    if (!updated) return Promise.reject(new Error('User not found'));
+    return Promise.resolve(toUser(usersStore.toSafe(updated)));
+  },
 
-export async function uploadAvatar(userId: number, file: File): Promise<User> {
-  const form = new FormData();
-  form.append("files", file);
-  form.append("refId", String(userId));
-  form.append("ref", "plugin::users-permissions.user");
-  form.append("field", "avatar");
-  const res = await apiClient.post<User>("/upload", form, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return res.data;
-}
+  updateAvatar: (userId: string, url: string, name: string): Promise<User> => {
+    const updated = usersStore.update(userId, { avatar: { url, name } });
+    if (!updated) return Promise.reject(new Error('User not found'));
+    return Promise.resolve(toUser(usersStore.toSafe(updated)));
+  },
+
+  // Static mode: no real file upload — return a placeholder URL
+  uploadAvatar: async (userId: string, file: File): Promise<{ url: string; name: string }> => {
+    // Create a local object URL so the image shows immediately in the browser
+    const url  = URL.createObjectURL(file);
+    const name = file.name;
+    await usersService.updateAvatar(userId, url, name);
+    return { url, name };
+  },
+};

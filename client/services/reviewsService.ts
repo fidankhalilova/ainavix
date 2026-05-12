@@ -1,46 +1,57 @@
-// services/reviewsService.ts
-// All raw API calls for the Review resource
+import { Review } from '@/types';
+import { reviewsStore, toolsStore, usersStore, newId } from '@/db/store';
 
-import apiClient, { buildQuery } from "@/lib/apiClient";
-import { Review, ApiResponse, ReviewCreateData } from "@/types";
+export const reviewsService = {
+  getByTool: (toolId: string): Promise<Review[]> =>
+    Promise.resolve(reviewsStore.getByTool(toolId)),
 
-export async function fetchReviewsByTool(toolId: number): Promise<Review[]> {
-  const query = buildQuery({
-    populate: { user: true },
-    filters: { tool: { id: { $eq: toolId } } },
-    sort: "createdAt:desc",
-    pagination: { page: 1, pageSize: 100 },
-  });
-  const res = await apiClient.get<ApiResponse<Review[]>>(`/reviews${query}`);
-  return res.data.data ?? [];
-}
+  getByUser: (userId: string): Promise<Review[]> =>
+    Promise.resolve(reviewsStore.getByUser(userId)),
 
-export async function fetchReviewsByUser(userId: number): Promise<Review[]> {
-  const query = buildQuery({
-    populate: { tool: { populate: { logo: true, categories: true } } },
-    filters: { user: { id: { $eq: userId } } },
-    sort: "createdAt:desc",
-    pagination: { page: 1, pageSize: 50 },
-  });
-  const res = await apiClient.get<ApiResponse<Review[]>>(`/reviews${query}`);
-  return res.data.data ?? [];
-}
+  create: (data: {
+    rating: number; title?: string; content: string;
+    pros?: string; cons?: string; tool: any; user: any;
+  }): Promise<Review> => {
+    const toolId = String(data.tool?._id ?? data.tool?.id ?? data.tool);
+    const userId = String(data.user?._id ?? data.user?.id ?? data.user);
 
-export async function createReview(data: ReviewCreateData): Promise<Review> {
-  const res = await apiClient.post<ApiResponse<Review>>("/reviews", { data });
-  return res.data.data;
-}
+    if (reviewsStore.hasReviewed(toolId, userId)) {
+      return Promise.reject(new Error('You have already reviewed this tool'));
+    }
 
-export async function updateReview(
-  id: number,
-  data: Partial<ReviewCreateData>,
-): Promise<Review> {
-  const res = await apiClient.put<ApiResponse<Review>>(`/reviews/${id}`, {
-    data,
-  });
-  return res.data.data;
-}
+    const tool = toolsStore.getById(toolId);
+    const user = usersStore.findById(userId);
 
-export async function deleteReview(id: number): Promise<void> {
-  await apiClient.delete(`/reviews/${id}`);
-}
+    const id  = newId('rev');
+    const now = new Date().toISOString();
+
+    const review: Review = {
+      _id: id, id,
+      rating:  data.rating,
+      title:   data.title   || '',
+      content: data.content,
+      pros:    data.pros    || '',
+      cons:    data.cons    || '',
+      tool: tool
+        ? { _id: tool._id, id: tool.id, name: tool.name, slug: tool.slug } as any
+        : { _id: toolId, id: toolId } as any,
+      user: user
+        ? { _id: user._id, id: user.id, username: user.username } as any
+        : { _id: userId, id: userId } as any,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    reviewsStore.add(review);
+
+    // Recalculate averageRating on the tool
+    toolsStore.updateRating(toolId);
+
+    return Promise.resolve(review);
+  },
+
+  delete: (id: string): Promise<void> => {
+    reviewsStore.delete(id);
+    return Promise.resolve();
+  },
+};

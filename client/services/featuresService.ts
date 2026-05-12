@@ -1,14 +1,17 @@
-// services/featuresService.ts
-// All raw API calls for the Feature resource
+import { Feature } from '@/types';
+import { featuresStore, newId } from '@/db/store';
 
-import apiClient, { buildQuery } from "@/lib/apiClient";
-import { Feature, ApiResponse } from "@/types";
+export const featuresService = {
+  getAll: (): Promise<Feature[]> =>
+    Promise.resolve(featuresStore.getAll()),
 
-export async function fetchFeatures(): Promise<Feature[]> {
-  const query = buildQuery({
-    sort: "name:asc",
-    pagination: { page: 1, pageSize: 100 },
-  });
-  const res = await apiClient.get<ApiResponse<Feature[]>>(`/features${query}`);
-  return res.data.data ?? [];
-}
+  create: (name: string, description = ''): Promise<Feature> => {
+    const existing = featuresStore.findByName(name);
+    if (existing) return Promise.resolve(existing);
+
+    const id   = newId('feat');
+    const feat: Feature = { _id: id, id, name: name.trim(), description };
+    featuresStore.add(feat);
+    return Promise.resolve(feat);
+  },
+};

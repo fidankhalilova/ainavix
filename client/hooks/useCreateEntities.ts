@@ -1,59 +1,28 @@
-// hooks/useCreateEntities.ts
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import apiClient from "@/lib/apiClient";
-
-// ── Create Category ──────────────────────────────────────────────
-async function createCategory(
-  name: string,
-): Promise<{ id: number; name: string }> {
-  const { data } = await apiClient.post("/categories", {
-    data: { name: name.trim() },
-  });
-  return { id: data.data.id, name: data.data.attributes?.name ?? name };
-}
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { categoriesService } from '@/services/categoriesService';
+import { featuresService } from '@/services/featuresService';
+import { tagsService } from '@/services/tagsService';
 
 export function useCreateCategory() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: createCategory,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+    mutationFn: (name: string) => categoriesService.create(name),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
   });
-}
-
-// ── Create Feature ───────────────────────────────────────────────
-async function createFeature(
-  name: string,
-): Promise<{ id: number; name: string; description: "" }> {
-  const { data } = await apiClient.post("/features", {
-    data: { name: name.trim() },
-  });
-  return {
-    id: data.data.id,
-    name: data.data.attributes?.name ?? name,
-    description: "",
-  };
 }
 
 export function useCreateFeature() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: createFeature,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["features"] }),
+    mutationFn: (name: string) => featuresService.create(name),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['features'] }),
   });
-}
-
-// ── Create Tag ───────────────────────────────────────────────────
-async function createTag(name: string): Promise<{ id: number; name: string }> {
-  const { data } = await apiClient.post("/tags", {
-    data: { name: name.trim() },
-  });
-  return { id: data.data.id, name: data.data.attributes?.name ?? name };
 }
 
 export function useCreateTag() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: createTag,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tags"] }),
+    mutationFn: (name: string) => tagsService.create(name),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tags'] }),
   });
 }

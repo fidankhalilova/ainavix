@@ -1,90 +1,64 @@
-// hooks/useFavorites.ts
-"use client";
+'use client';
+import { useState, useEffect, useCallback } from 'react';
+import { Tool } from '@/types';
 
-import { useState, useEffect } from "react";
-import { Tool } from "@/types";
+const STORAGE_KEY   = 'ainavix_favorites';
+const VISIBILITY_KEY = 'ainavix_fav_visibility';
 
-type Visibility = "private" | "public";
+export function useFavorites() {
+  const [favorites,   setFavorites]   = useState<Tool[]>([]);
+  const [visibility,  setVisibility]  = useState<'public' | 'private'>('private');
+  const [hydrated,    setHydrated]    = useState(false);
 
-export const useFavorites = () => {
-  const [favorites, setFavorites] = useState<Tool[]>([]);
-  const [visibility, setVisibility] = useState<Visibility>("private");
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  // Load from localStorage
   useEffect(() => {
-    const savedFavorites = localStorage.getItem("userFavorites");
-    const savedVisibility = localStorage.getItem(
-      "favoritesVisibility",
-    ) as Visibility | null;
-
-    if (savedFavorites) {
-      try {
-        setFavorites(JSON.parse(savedFavorites));
-      } catch (e) {
-        console.error("Failed to parse favorites");
-      }
-    }
-
-    if (savedVisibility) {
-      setVisibility(savedVisibility);
-    }
-
-    setIsLoaded(true);
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) setFavorites(JSON.parse(raw));
+      const vis = localStorage.getItem(VISIBILITY_KEY);
+      if (vis === 'public' || vis === 'private') setVisibility(vis);
+    } catch (_) {}
+    setHydrated(true);
   }, []);
 
-  // Save favorites
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem("userFavorites", JSON.stringify(favorites));
-    }
-  }, [favorites, isLoaded]);
-
-  // Save visibility
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem("favoritesVisibility", visibility);
-    }
-  }, [visibility, isLoaded]);
-
-  const addToFavorites = (tool: Tool) => {
-    if (!favorites.some((fav) => fav.id === tool.id)) {
-      setFavorites((prev) => [...prev, tool]);
-      return true;
-    }
-    return false;
+  const persist = (list: Tool[]) => {
+    setFavorites(list);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   };
 
-  const removeFromFavorites = (toolId: number) => {
-    setFavorites((prev) => prev.filter((fav) => fav.id !== toolId));
-  };
+  // Returns true if added, false if removed
+  const toggleFavorite = useCallback((tool: Tool): boolean => {
+    setFavorites(prev => {
+      const exists = prev.some(t => t._id === tool._id || t.id === tool.id);
+      const next   = exists
+        ? prev.filter(t => t._id !== tool._id && t.id !== tool.id)
+        : [...prev, tool];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+    const exists = favorites.some(t => t._id === tool._id || t.id === tool.id);
+    return !exists;
+  }, [favorites]);
 
-  const toggleFavorite = (tool: Tool) => {
-    const isAlreadyFavorite = favorites.some((fav) => fav.id === tool.id);
-    if (isAlreadyFavorite) {
-      removeFromFavorites(tool.id);
-      return false;
-    } else {
-      addToFavorites(tool);
-      return true;
-    }
-  };
+  const removeFromFavorites = useCallback((toolId: string | number) => {
+    setFavorites(prev => {
+      const next = prev.filter(t =>
+        String(t._id) !== String(toolId) && String(t.id) !== String(toolId)
+      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
-  const isFavorite = (toolId: number) =>
-    favorites.some((fav) => fav.id === toolId);
+  const isFavorite = (toolId: string | number) =>
+    favorites.some(t => String(t._id) === String(toolId) || String(t.id) === String(toolId));
 
   const toggleVisibility = () => {
-    setVisibility((prev) => (prev === "private" ? "public" : "private"));
+    setVisibility(prev => {
+      const next = prev === 'public' ? 'private' : 'public';
+      localStorage.setItem(VISIBILITY_KEY, next);
+      return next;
+    });
   };
 
-  return {
-    favorites,
-    visibility,
-    toggleVisibility,
-    addToFavorites,
-    removeFromFavorites,
-    toggleFavorite,
-    isFavorite,
-    count: favorites.length,
-  };
-};
+  return { favorites, toggleFavorite, removeFromFavorites, isFavorite, visibility, toggleVisibility, hydrated };
+}

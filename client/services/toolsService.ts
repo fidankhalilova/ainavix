@@ -1,194 +1,156 @@
-// services/toolsService.ts
-// All raw API calls for the Tool resource
+import { Tool, ToolsQueryParams, ToolsResponse } from '@/types';
+import { toolsStore, categoriesStore, featuresStore, tagsStore, newId } from '@/db/store';
 
-import apiClient, { buildQuery, TOOL_POPULATE } from "@/lib/apiClient";
-import { Tool, ApiResponse, ToolsQueryParams, ToolSubmitData } from "@/types";
-
-export async function fetchTools(
-  params: ToolsQueryParams = {},
-): Promise<ApiResponse<Tool[]>> {
-  const {
-    search = "",
-    category,
-    pricing,
-    sort = "newest",
-    page = 1,
-    pageSize = 12,
-    featured,
-    verified,
-  } = params;
-
-  const filters: Record<string, unknown> = {
-    state: { $eq: "Published" },
-  };
-
-  if (search) {
-    filters.$or = [
-      { name: { $containsi: search } },
-      { shortDescription: { $containsi: search } },
-      { description: { $containsi: search } },
-    ];
-  }
-
-  if (category && category !== "all") {
-    filters.categories = { slug: { $eq: category } };
-  }
-  if (pricing && pricing !== "all") filters.pricing = { $eq: pricing };
-  if (featured !== undefined) filters.isFeatured = { $eq: featured };
-  if (verified !== undefined) filters.isVerified = { $eq: verified };
-
-  const sortMap: Record<string, string> = {
-    newest: "createdAt:desc",
-    rating: "averageRating:desc",
-    popular: "viewsCount:desc",
-    name: "name:asc",
-  };
-
-  const query = buildQuery({
-    ...TOOL_POPULATE,
-    filters,
-    sort: sortMap[sort] ?? "createdAt:desc",
-    pagination: { page, pageSize },
-  });
-
-  const res = await apiClient.get<ApiResponse<Tool[]>>(`/tools${query}`);
-  return res.data;
-}
-
-export async function fetchToolBySlug(slug: string): Promise<Tool | null> {
-  const query = buildQuery({
-    ...TOOL_POPULATE,
-    filters: { slug: { $eq: slug }, state: { $eq: "Published" } },
-  });
-  const res = await apiClient.get<ApiResponse<Tool[]>>(`/tools${query}`);
-  return res.data.data?.[0] ?? null;
-}
-
-// Replace the existing fetchToolById
-// services/toolsService.ts
-export async function fetchToolById(id: number | string): Promise<Tool> {
-  const query = buildQuery(TOOL_POPULATE);
-
-  try {
-    // For Strapi v5, try using documentId if it's a string
-    if (typeof id === "string" && id.length > 0) {
-      // Try direct documentId fetch first
-      const res = await apiClient.get<ApiResponse<Tool>>(
-        `/tools/${id}${query}`,
-      );
-      return res.data.data;
+function buildSort(sort: string | undefined) {
+  return (a: Tool, b: Tool): number => {
+    switch (sort) {
+      case 'rating':   return (b.averageRating  || 0) - (a.averageRating  || 0);
+      case 'popular':  return (b.viewsCount     || 0) - (a.viewsCount     || 0);
+      case 'name':     return a.name.localeCompare(b.name);
+      default:         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }
+  };
+}
 
-    // For numeric IDs, try direct fetch
-    const res = await apiClient.get<ApiResponse<Tool>>(`/tools/${id}${query}`);
-    return res.data.data;
-  } catch (err: any) {
-    if (err.response?.status === 404) {
-      console.warn(`Tool ${id} not found with direct ID, trying fallback...`);
+function matchText(tool: Tool, search: string): boolean {
+  const q = search.toLowerCase();
+  return (
+    tool.name.toLowerCase().includes(q) ||
+    tool.shortDescription.toLowerCase().includes(q) ||
+    (tool.description || '').toLowerCase().includes(q) ||
+    (tool.categories?.some(c => c.name.toLowerCase().includes(q)) ?? false) ||
+    (tool.tags?.some(t => t.name.toLowerCase().includes(q)) ?? false)
+  );
+}
 
-      // Fallback: fetch via list with filters
-      const listQuery = buildQuery({
-        ...TOOL_POPULATE,
-        filters: {
-          $or: [
-            { id: { $eq: typeof id === "string" ? parseInt(id) : id } },
-            { documentId: { $eq: String(id) } },
-            { slug: { $eq: String(id) } }, // Also try by slug
-          ],
-          state: { $eq: "Published" },
-        },
-        pagination: { page: 1, pageSize: 1 },
+function generateSlug(name: string): string {
+  return name.toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+export const toolsService = {
+  getTools: (params: ToolsQueryParams = {}): Promise<ToolsResponse> => {
+    const { search, category, pricing, sort, page = 1, pageSize = 12, featured } = params;
+    const ids = (params as any).ids as string | undefined;
+
+    let list = toolsStore.getAll();
+
+    if (ids) {
+      const idList = String(ids).split(',').filter(Boolean);
+      list = list.filter(t => idList.includes(t._id) || idList.includes(t.id));
+      return Promise.resolve({
+        data: list,
+        meta: { pagination: { page: 1, pageSize: list.length, pageCount: 1, total: list.length } },
       });
-
-      const listRes = await apiClient.get<ApiResponse<Tool[]>>(
-        `/tools${listQuery}`,
-      );
-      const tool = listRes.data.data?.[0];
-
-      if (!tool) throw new Error(`Tool with id ${id} not found`);
-      return tool;
     }
-    throw err;
-  }
-}
 
-// Replace the existing fetchToolsByIds
-export async function fetchToolsByIds(ids: number[]): Promise<Tool[]> {
-  if (!ids.length) return [];
+    list = list.filter(t => t.isPublished);
 
-  const query = buildQuery({
-    ...TOOL_POPULATE,
-    filters: {
-      $or: [{ id: { $in: ids } }, { documentId: { $in: ids.map(String) } }],
-      state: { $eq: "Published" },
-    },
-    pagination: { page: 1, pageSize: ids.length },
-  });
+    if (featured)  list = list.filter(t => t.isFeatured);
+    if (search)    list = list.filter(t => matchText(t, search));
+    if (pricing && pricing !== 'all') {
+      list = list.filter(t => t.pricing?.toLowerCase() === (pricing as string).toLowerCase());
+    }
+    if (category && category !== 'all') {
+      list = list.filter(t => t.categories?.some(c => c.slug === category));
+    }
 
-  const res = await apiClient.get<ApiResponse<Tool[]>>(`/tools${query}`);
-  return res.data.data ?? [];
-}
+    list = [...list].sort(buildSort(sort as string));
 
-export async function fetchFeaturedTools(limit = 6): Promise<Tool[]> {
-  const query = buildQuery({
-    ...TOOL_POPULATE,
-    filters: { isFeatured: { $eq: true }, state: { $eq: "Published" } },
-    sort: "averageRating:desc",
-    pagination: { page: 1, pageSize: limit },
-  });
-  const res = await apiClient.get<ApiResponse<Tool[]>>(`/tools${query}`);
-  return res.data.data ?? [];
-}
+    const total     = list.length;
+    const pageNum   = Number(page);
+    const size      = Number(pageSize);
+    const pageCount = Math.ceil(total / size) || 0;
+    const data      = list.slice((pageNum - 1) * size, pageNum * size);
 
-export async function fetchTopRatedTools(limit = 10): Promise<Tool[]> {
-  const query = buildQuery({
-    ...TOOL_POPULATE,
-    filters: { averageRating: { $gte: 4 }, state: { $eq: "Published" } },
-    sort: "averageRating:desc",
-    pagination: { page: 1, pageSize: limit },
-  });
-  const res = await apiClient.get<ApiResponse<Tool[]>>(`/tools${query}`);
-  return res.data.data ?? [];
-}
-
-export async function fetchUserSubmittedTools(userId: number): Promise<Tool[]> {
-  const query = buildQuery({
-    ...TOOL_POPULATE,
-    filters: { submittedBy: { id: { $eq: userId } } },
-    sort: "createdAt:desc",
-    pagination: { page: 1, pageSize: 100 },
-  });
-  const res = await apiClient.get<ApiResponse<Tool[]>>(`/tools${query}`);
-  return res.data.data ?? [];
-}
-
-export async function submitTool(data: ToolSubmitData): Promise<Tool> {
-  const res = await apiClient.post<ApiResponse<Tool>>("/tools", {
-    data: {
-      ...data,
-      description: data.description || "",
-      pricingDetails: data.pricingDetails || "",
-      state: "Draft",
-      averageRating: 0,
-      reviewsCount: 0,
-      viewsCount: 0,
-      isVerified: false,
-      isFeatured: false,
-    },
-  });
-  return res.data.data;
-}
-
-export async function incrementToolViews(id: number): Promise<void> {
-  try {
-    // Use your existing function that builds the query with populate + filters
-    const tool = await fetchToolById(id); // This already does /tools/${id}?populate=...
-
-    const current = tool?.viewsCount ?? 0;
-    await apiClient.put(`/tools/${id}`, {
-      data: { viewsCount: current + 1 },
+    return Promise.resolve({
+      data,
+      meta: { pagination: { page: pageNum, pageSize: size, pageCount, total } },
     });
-  } catch (err) {
-    console.error("[incrementViews] failed:", err);
-  }
-}
+  },
+
+  getToolBySlug: (slug: string): Promise<Tool> => {
+    const tool = toolsStore.getBySlug(slug) ?? toolsStore.getById(slug);
+    if (!tool) return Promise.reject(new Error('Tool not found'));
+    return Promise.resolve(tool);
+  },
+
+  getToolsByIds: (ids: string[]): Promise<ToolsResponse> =>
+    toolsService.getTools({ ids: ids.join(',') } as any),
+
+  getFeaturedTools: (limit = 6): Promise<ToolsResponse> =>
+    toolsService.getTools({ featured: true as any, pageSize: limit }),
+
+  getUserTools: (userId: string): Promise<Tool[]> => {
+    const list = toolsStore.getAll().filter(t => {
+      const sid = (t.submittedBy as any)?._id ?? (t.submittedBy as any)?.id ?? t.submittedBy;
+      return String(sid) === String(userId);
+    });
+    return Promise.resolve(list);
+  },
+
+  submitTool: (data: Partial<Tool> & { submittedBy?: any }): Promise<Tool> => {
+    const id   = newId('tool');
+    const slug = (data as any).slug || generateSlug(data.name || id);
+
+    const resolveCategory = (c: any) => {
+      if (!c) return null;
+      if (typeof c === 'string') {
+        return categoriesStore.findBySlug(c)
+          ?? categoriesStore.getAll().find(x => x._id === c || x.id === c)
+          ?? { _id: c, id: c, name: c, slug: c, description: '' };
+      }
+      return c;
+    };
+    const resolveFeature = (f: any) => {
+      if (!f) return null;
+      if (typeof f === 'string') {
+        return featuresStore.findByName(f)
+          ?? featuresStore.getAll().find(x => x._id === f || x.id === f)
+          ?? { _id: f, id: f, name: f, description: '' };
+      }
+      return f;
+    };
+    const resolveTag = (t: any) => {
+      if (!t) return null;
+      if (typeof t === 'string') {
+        return tagsStore.findByName(t)
+          ?? tagsStore.getAll().find(x => x._id === t || x.id === t)
+          ?? { _id: t, id: t, name: t };
+      }
+      return t;
+    };
+
+    const now  = new Date().toISOString();
+    const tool: Tool = {
+      _id: id, id,
+      name:             data.name || '',
+      slug,
+      shortDescription: data.shortDescription || '',
+      description:      data.description || '',
+      website:          data.website || '',
+      pricing:          (data.pricing as any) || 'Free',
+      pricingDetails:   data.pricingDetails || '',
+      logo:             data.logo ?? { url: null, name: null },
+      isVerified: false, isFeatured: false, isPublished: false,
+      viewsCount: 0, averageRating: 0, reviewsCount: 0,
+      categories: ((data.categories as any[]) || []).map(resolveCategory).filter(Boolean),
+      features:   ((data.features   as any[]) || []).map(resolveFeature).filter(Boolean),
+      tags:       ((data.tags       as any[]) || []).map(resolveTag).filter(Boolean),
+      submittedBy: data.submittedBy,
+      createdAt: now, updatedAt: now,
+    };
+    toolsStore.add(tool);
+    return Promise.resolve(tool);
+  },
+
+  incrementViews: (id: string): Promise<void> => {
+    toolsStore.incrementViews(id);
+    return Promise.resolve();
+  },
+};
+
+export const incrementToolViews = (id: string) => toolsService.incrementViews(id);

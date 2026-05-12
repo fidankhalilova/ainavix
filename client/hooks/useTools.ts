@@ -1,131 +1,56 @@
-// hooks/useTools.ts
-// TanStack Query hooks for the Tool resource
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toolsService } from '@/services/toolsService';
+import { ToolsQueryParams } from '@/types';
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  UseQueryOptions,
-} from "@tanstack/react-query";
-import { queryKeys } from "@/lib/queryKeys";
-import {
-  fetchTools,
-  fetchToolBySlug,
-  fetchToolById,
-  fetchToolsByIds,
-  fetchFeaturedTools,
-  fetchTopRatedTools,
-  fetchUserSubmittedTools,
-  submitTool,
-} from "@/services/toolsService";
-import { Tool, ApiResponse, ToolsQueryParams } from "@/types";
-import apiClient, { buildQuery } from "@/lib/apiClient";
-
-export function useTools(
-  params: ToolsQueryParams = {},
-  options?: Omit<UseQueryOptions<ApiResponse<Tool[]>>, "queryKey" | "queryFn">,
-) {
+// useTools — returns full ToolsResponse { data: Tool[], meta }
+export function useTools(params: ToolsQueryParams = {}) {
   return useQuery({
-    queryKey: queryKeys.tools.list(params),
-    queryFn: () => fetchTools(params),
-    staleTime: 1000 * 60 * 2,
-    ...options,
+    queryKey: ['tools', params],
+    queryFn:  () => toolsService.getTools(params),
   });
 }
 
-export function useTool(
-  slug: string,
-  options?: Omit<UseQueryOptions<Tool | null>, "queryKey" | "queryFn">,
-) {
+// useTool — returns single Tool
+export function useTool(slug: string) {
   return useQuery({
-    queryKey: queryKeys.tools.detail(slug),
-    queryFn: () => fetchToolBySlug(slug),
-    enabled: !!slug,
-    staleTime: 1000 * 60 * 5,
-    ...options,
+    queryKey: ['tool', slug],
+    queryFn:  () => toolsService.getToolBySlug(slug),
+    enabled:  !!slug,
   });
 }
 
-// hooks/useTools.ts
-export function useToolById(
-  id: number | string | null,
-  options?: Omit<UseQueryOptions<Tool>, "queryKey" | "queryFn">,
-) {
+// useFeaturedTools — returns Tool[] directly
+// getFeaturedTools() returns ToolsResponse, so .then(r => r.data) gives Tool[]
+export function useFeaturedTools(limit = 6) {
   return useQuery({
-    queryKey: queryKeys.tools.byId(id as any),
-    queryFn: () => {
-      if (!id) throw new Error("ID is required");
-      return fetchToolById(id);
-    },
-    enabled: !!id && id !== 0 && id !== "0",
-    ...options,
+    queryKey: ['tools', 'featured', limit],
+    queryFn:  () => toolsService.getFeaturedTools(limit).then(r => r.data),
   });
 }
 
-export function useToolsByIds(
-  ids: number[],
-  options?: Omit<UseQueryOptions<Tool[]>, "queryKey" | "queryFn">,
-) {
+// useToolsByIds — returns Tool[] directly
+// getToolsByIds() returns ToolsResponse, so .then(r => r.data) gives Tool[]
+export function useToolsByIds(ids: number[]) {
   return useQuery({
-    queryKey: queryKeys.tools.byIds(ids),
-    queryFn: () => fetchToolsByIds(ids),
-    enabled: ids.length > 0,
-    ...options,
+    queryKey: ['tools', 'compare', ids],
+    queryFn:  () => toolsService.getToolsByIds(ids.map(String)).then(r => r.data),
+    enabled:  ids.length > 0,
   });
 }
 
-export function useFeaturedTools(
-  limit = 6,
-  options?: Omit<UseQueryOptions<Tool[]>, "queryKey" | "queryFn">,
-) {
+// useUserSubmittedTools — returns Tool[]
+export function useUserSubmittedTools(userId: number | string, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.tools.featured(limit),
-    queryFn: () => fetchFeaturedTools(limit),
-    staleTime: 1000 * 60 * 10,
-    ...options,
+    queryKey: ['tools', 'user', String(userId)],
+    queryFn:  () => toolsService.getUserTools(String(userId)),
+    enabled:  options?.enabled !== false && !!userId,
   });
 }
-
-export function useTopRatedTools(
-  limit = 10,
-  options?: Omit<UseQueryOptions<Tool[]>, "queryKey" | "queryFn">,
-) {
-  return useQuery({
-    queryKey: queryKeys.tools.topRated(limit),
-    queryFn: () => fetchTopRatedTools(limit),
-    staleTime: 1000 * 60 * 10,
-    ...options,
-  });
-}
-
-export const useUserSubmittedTools = (userId: number, options = {}) => {
-  return useQuery({
-    queryKey: ["user-submitted-tools", userId],
-    queryFn: async () => {
-      if (!userId || userId === 0) return [];
-
-      const query = buildQuery({
-        filters: {
-          submittedBy: userId,
-        },
-        populate: ["logo", "categories"],
-        sort: ["createdAt:desc"],
-      });
-
-      const { data } = await apiClient.get(`/tools${query}`);
-      return data.data as Tool[];
-    },
-    enabled: !!userId && userId !== 0,
-    ...options,
-  });
-};
 
 export function useSubmitTool() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: submitTool,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.tools.all() });
-    },
+    mutationFn: toolsService.submitTool,
+    onSuccess:  () => queryClient.invalidateQueries({ queryKey: ['tools'] }),
   });
 }

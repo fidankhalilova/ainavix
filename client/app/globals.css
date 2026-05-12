@@ -1,37 +1,60 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Syne:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @layer base {
-  * {
-    box-sizing: border-box;
+  :root {
+    --font-display: var(--font-sans);
   }
 
-  html {
-    scroll-behavior: smooth;
+  .font-display {
+    font-family: var(--font-display, sans-serif);
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 
-  body {
-    font-family: 'Outfit', system-ui, sans-serif;
-    background-color: #F8F9FF;
-    color: #1B1464;
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  ::selection {
-    background-color: rgba(0, 194, 203, 0.2);
+  .animate-fade-in {
+    animation: fadeIn .4s ease forwards;
   }
 
-  ::-webkit-scrollbar {
-    width: 5px;
+  .animate-fade-up {
+    animation: fadeUp .5s ease forwards;
   }
 
-  ::-webkit-scrollbar-track {
-    background: #E8EAFF;
+  .page-enter {
+    animation: fadeIn .3s ease;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
 
-  ::-webkit-scrollbar-thumb {
-    background: #2E4BC6;
-    border-radius: 3px;
+  to {
+    opacity: 1;
   }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.html {
+  background-color: transparent;
 }

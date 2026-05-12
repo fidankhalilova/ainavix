@@ -1,9 +1,5 @@
 import Link from "next/link";
 import { Camera, Bird, Phone, Mail } from "lucide-react";
-import Image from "next/image";
-
-// Static import for the logo (recommended way)
-import Logo from "@/assets/ogo.png";
 
 const LINKS = {
   Platform: [
@@ -35,38 +31,11 @@ const SOCIAL = [
 export default function Footer() {
   return (
     <footer className="relative bg-[#1B1464] text-white overflow-hidden">
-      {/* Top wave */}
-      <div
-        className="absolute top-0 inset-x-0 overflow-hidden"
-        style={{ height: 60, marginTop: -1 }}
-      >
-        <svg
-          viewBox="0 0 1440 60"
-          preserveAspectRatio="none"
-          className="w-full h-full"
-        >
-          <path
-            d="M0 30C240 6 480 54 720 30C960 6 1200 54 1440 30V60H0V30Z"
-            fill="#F8F9FF"
-          />
-        </svg>
-      </div>
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-14">
           {/* Brand */}
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-[#4A6DE0] to-[#00C2CB] flex items-center justify-center shadow-[0_0_28px_rgba(0,194,203,.4)] overflow-hidden">
-                <Image
-                  src={Logo} // ← Fixed: Static import
-                  alt="AINavix Logo"
-                  width={36}
-                  height={36}
-                  priority
-                  className="object-contain"
-                />
-              </div>
+            <div className="flex items-center mb-5">
               <span className="font-display font-bold text-xl">AINavix</span>
             </div>
 
@@ -113,7 +82,7 @@ export default function Footer() {
 
         <div className="border-t border-white/10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-white/35 text-sm">
-            © {new Date().getFullYear()} AINavix — Built by Nizami Hajiyev,
+            ©️ {new Date().getFullYear()} AINavix — Built by Nizami Hajiyev,
             Murad Safarli, Fidan Khalilova, Ismayil Aliyev &amp; Ali Ismayilov.
           </p>
           <div className="flex items-center gap-6">

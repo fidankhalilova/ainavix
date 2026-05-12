@@ -1,29 +1,19 @@
-// services/categoriesService.ts
-// All raw API calls for the Category resource
+import { Category } from '@/types';
+import { categoriesStore, newId } from '@/db/store';
+import slugify from '@/db/slugify';
 
-import apiClient, { buildQuery } from "@/lib/apiClient";
-import { Category, ApiResponse } from "@/types";
+export const categoriesService = {
+  getAll: (): Promise<{ data: Category[] }> =>
+    Promise.resolve({ data: categoriesStore.getAll() }),
 
-export async function fetchCategories(): Promise<ApiResponse<Category[]>> {
-  const query = buildQuery({
-    sort: "name:asc",
-    pagination: { page: 1, pageSize: 100 },
-  });
-  const res = await apiClient.get<ApiResponse<Category[]>>(
-    `/categories${query}`,
-  );
-  return res.data;
-}
+  create: (name: string, description = '', color = ''): Promise<Category> => {
+    const existing = categoriesStore.findByName(name);
+    if (existing) return Promise.resolve(existing);
 
-export async function fetchCategoryBySlug(
-  slug: string,
-): Promise<Category | null> {
-  const query = buildQuery({
-    populate: { tools: true },
-    filters: { slug: { $eq: slug } },
-  });
-  const res = await apiClient.get<ApiResponse<Category[]>>(
-    `/categories${query}`,
-  );
-  return res.data.data?.[0] ?? null;
-}
+    const id   = newId('cat');
+    const slug = slugify(name);
+    const cat: Category = { _id: id, id, name: name.trim(), slug, description, color };
+    categoriesStore.add(cat);
+    return Promise.resolve(cat);
+  },
+};

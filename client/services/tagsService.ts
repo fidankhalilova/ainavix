@@ -1,14 +1,18 @@
-// services/tagsService.ts
-// All raw API calls for the Tag resource
+import { Tag } from '@/types';
+import { tagsStore, newId } from '@/db/store';
 
-import apiClient, { buildQuery } from "@/lib/apiClient";
-import { Tag, ApiResponse } from "@/types";
+export const tagsService = {
+  getAll: (): Promise<Tag[]> =>
+    Promise.resolve(tagsStore.getAll()),
 
-export async function fetchTags(): Promise<Tag[]> {
-  const query = buildQuery({
-    sort: "name:asc",
-    pagination: { page: 1, pageSize: 100 },
-  });
-  const res = await apiClient.get<ApiResponse<Tag[]>>(`/tags${query}`);
-  return res.data.data ?? [];
-}
+  create: (name: string): Promise<Tag> => {
+    const normalized = name.trim().toLowerCase();
+    const existing   = tagsStore.findByName(normalized);
+    if (existing) return Promise.resolve(existing);
+
+    const id  = newId('tag');
+    const tag: Tag = { _id: id, id, name: normalized };
+    tagsStore.add(tag);
+    return Promise.resolve(tag);
+  },
+};

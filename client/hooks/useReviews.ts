@@ -1,78 +1,39 @@
-// hooks/useReviews.ts
-// TanStack Query hooks for the Review resource
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { reviewsService } from '@/services/reviewsService';
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  UseQueryOptions,
-} from "@tanstack/react-query";
-import { queryKeys } from "@/lib/queryKeys";
-import {
-  fetchReviewsByTool,
-  fetchReviewsByUser,
-  createReview,
-  updateReview,
-  deleteReview,
-} from "@/services/reviewsService";
-import { Review, ReviewCreateData } from "@/types";
-
-export function useReviewsByTool(
-  toolId: number,
-  options?: Omit<UseQueryOptions<Review[]>, "queryKey" | "queryFn">,
-) {
+export function useReviewsByTool(toolId: string | number, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.reviews.byTool(toolId),
-    queryFn: () => fetchReviewsByTool(toolId),
-    enabled: !!toolId,
-    ...options,
+    queryKey: ['reviews', 'tool', String(toolId)],
+    queryFn:  () => reviewsService.getByTool(String(toolId)),
+    enabled:  options?.enabled !== false && !!toolId,
   });
 }
 
-export function useReviewsByUser(
-  userId: number,
-  options?: Omit<UseQueryOptions<Review[]>, "queryKey" | "queryFn">,
-) {
+export function useReviewsByUser(userId: string | number, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.reviews.byUser(userId),
-    queryFn: () => fetchReviewsByUser(userId),
-    enabled: !!userId,
-    ...options,
+    queryKey: ['reviews', 'user', String(userId)],
+    queryFn:  () => reviewsService.getByUser(String(userId)),
+    enabled:  options?.enabled !== false && !!userId,
   });
 }
 
 export function useCreateReview() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: ReviewCreateData) => createReview(data),
+    mutationFn: reviewsService.create,
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: queryKeys.reviews.byTool(vars.tool) });
-    },
-  });
-}
-
-export function useUpdateReview() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: number;
-      data: Partial<ReviewCreateData>;
-    }) => updateReview(id, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reviews"] });
+      queryClient.invalidateQueries({ queryKey: ['reviews', 'tool', String(vars.tool)] });
+      queryClient.invalidateQueries({ queryKey: ['tool'] });
     },
   });
 }
 
 export function useDeleteReview() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => deleteReview(id),
+    mutationFn: (id: string) => reviewsService.delete(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reviews"] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
     },
   });
 }
