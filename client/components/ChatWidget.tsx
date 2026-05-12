@@ -12,7 +12,7 @@ export default function ChatWidget() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-[#2E4BC6] to-[#00C2CB] text-white shadow-[0_4px_24px_rgba(46,75,198,0.4)] hover:shadow-[0_8px_32px_rgba(0,194,203,0.5)] hover:scale-110 transition-all duration-300 flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-linear-to-br from-[#2E4BC6] to-[#00C2CB] text-white shadow-[0_4px_24px_rgba(46,75,198,0.4)] hover:shadow-[0_8px_32px_rgba(0,194,203,0.5)] hover:scale-110 transition-all duration-300 flex items-center justify-center"
         aria-label="Open subscription"
       >
         <MessageCircle size={24} />
@@ -22,7 +22,7 @@ export default function ChatWidget() {
       {open && (
         <div className="fixed bottom-24 right-6 z-50 w-80 bg-white rounded-3xl shadow-[0_20px_60px_rgba(27,20,100,0.18)] border border-[#E8EAFF] overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#1B1464] to-[#2E4BC6] px-5 py-4 flex items-center justify-between">
+          <div className="bg-linear-to-r from-[#1B1464] to-[#2E4BC6] px-5 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
                 <Sparkles size={16} className="text-white" />
@@ -87,7 +87,7 @@ export default function ChatWidget() {
                   setOpen(false);
                   router.push("/checkout");
                 }}
-                className="w-full py-2.5 bg-gradient-to-r from-[#2E4BC6] to-[#00C2CB] text-white text-sm font-bold rounded-xl shadow-[0_0_16px_rgba(46,75,198,0.3)] hover:shadow-[0_0_24px_rgba(0,194,203,0.4)] transition-all"
+                className="w-full py-2.5 bg-linear-to-r from-[#2E4BC6] to-[#00C2CB] text-white text-sm font-bold rounded-xl shadow-[0_0_16px_rgba(46,75,198,0.3)] hover:shadow-[0_0_24px_rgba(0,194,203,0.4)] transition-all"
               >
                 Subscribe Now
               </button>

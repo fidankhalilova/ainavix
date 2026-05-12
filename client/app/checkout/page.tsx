@@ -36,7 +36,7 @@ export default function CheckoutPage() {
 
         <div className="bg-white rounded-3xl border border-[#E8EAFF] shadow-[0_8px_40px_rgba(27,20,100,0.08)] overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#1B1464] to-[#2E4BC6] px-8 py-6">
+          <div className="bg-linear-to-r from-[#1B1464] to-[#2E4BC6] px-8 py-6">
             <h1 className="text-white font-bold text-2xl">
               Complete your order
             </h1>
@@ -166,7 +166,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 mt-2 bg-gradient-to-r from-[#2E4BC6] to-[#00C2CB] text-white font-bold rounded-xl shadow-[0_0_20px_rgba(46,75,198,0.3)] hover:shadow-[0_0_30px_rgba(0,194,203,0.4)] disabled:opacity-60 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 mt-2 bg-linear-to-r from-[#2E4BC6] to-[#00C2CB] text-white font-bold rounded-xl shadow-[0_0_20px_rgba(46,75,198,0.3)] hover:shadow-[0_0_30px_rgba(0,194,203,0.4)] disabled:opacity-60 transition-all flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

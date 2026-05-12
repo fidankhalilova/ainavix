@@ -1,6 +1,10 @@
+// Use a consistent ID type - string is more common with MongoDB/ObjectId
+// If you need both, create a type alias
+export type ID = string;
+
 export interface User {
-  _id: string | number;
-  id: string | number; // alias for _id
+  _id: ID;
+  id: ID; // alias for _id
   username: string;
   email: string;
   bio?: string;
@@ -11,8 +15,8 @@ export interface User {
 }
 
 export interface Category {
-  _id: string | number;
-  id: string | number;
+  _id: ID;
+  id: ID;
   name: string;
   slug: string;
   description: string;
@@ -20,21 +24,21 @@ export interface Category {
 }
 
 export interface Feature {
-  _id: string | number;
-  id: string | number;
+  _id: ID;
+  id: ID;
   name: string;
   description: string;
 }
 
 export interface Tag {
-  _id: string | number;
-  id: string | number;
+  _id: ID;
+  id: ID;
   name: string;
 }
 
 export interface Tool {
-  _id: string | number;
-  id: string | number;
+  _id: ID;
+  id: ID;
   name: string;
   slug: string;
   shortDescription: string;
@@ -58,8 +62,8 @@ export interface Tool {
 }
 
 export interface Review {
-  _id: string | number;
-  id: string | number;
+  _id: ID;
+  id: ID;
   rating: number;
   title?: string;
   content: string;
@@ -79,7 +83,7 @@ export interface ToolsQueryParams {
   page?: number;
   pageSize?: number;
   featured?: boolean;
-  ids?: string;
+  ids?: string; // Should be string if it's a comma-separated list of IDs
 }
 
 export interface PaginationMeta {
